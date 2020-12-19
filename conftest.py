@@ -1,4 +1,5 @@
 from fixture.application import Application
+from fixture.db import DbFixture
 import pytest
 import json
 import os.path
@@ -23,7 +24,7 @@ def app(request):
     web_config = load_config(request.config.getoption("--target"))['web']
     if fixture is None or fixture.validation():
         fixture = Application(browser=browser, base_url=web_config["baseURL"])
-    # fixture.session.ensure_login(username=web_config["username"], password=web_config["password"])
+    fixture.session.ensure_login(username=web_config["username"], password=web_config["password"])
     return fixture
 
 
@@ -32,10 +33,17 @@ def stop(request):
     def fin():
         fixture.session.ensure_logout()
         fixture.destroy()
-
     request.addfinalizer(fin)
     return fixture
 
+@pytest.fixture(scope="session", autouse=True)
+def db(request):
+    db_config = load_config(request.config.getoption("--target"))['db']
+    dbfixture = DbFixture(host=db_config['host'], name=db_config['name'], user=db_config['user'], password=db_config['password'])
+    def fin():
+        dbfixture.destroy()
+    request.addfinalizer(fin)
+    return dbfixture
 
 @pytest.fixture
 def check_ui(request):
